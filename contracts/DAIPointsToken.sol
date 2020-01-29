@@ -19,7 +19,7 @@ contract DAIPointsToken is ERC20, ERC20Detailed, Ownable {
 
   constructor (address _dai) public
     ERC20Detailed('DAIPoints', 'DPTS', 18) {
-      DAI = IERC20(_dai);
+      setDAI(_dai);
     }
 
   /**
