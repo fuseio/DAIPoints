@@ -1,33 +1,37 @@
 require('dotenv').config()
 const HDWalletProvider = require('truffle-hdwallet-provider')
-const fs = require('fs')
-const EthWallet = require('ethereumjs-wallet')
 
 const {
-  RPC,
-  WALLET_PROVIDER_METHOD,
-  CREDENTIALS_KEYSTORE,
-  CREDENTIALS_PASSWORD,
-  MNEMONIC
+  PRIVATE_KEY,
+  MNEMONIC,
+  INFURA_API_KEY
 } = process.env
-
-let walletProvider
-if (WALLET_PROVIDER_METHOD === 'keystore') {
-  const keystore = fs.readFileSync(CREDENTIALS_KEYSTORE).toString()
-  const password = fs.readFileSync(CREDENTIALS_PASSWORD).toString().trim()
-  const wallet = EthWallet.fromV3(keystore, password)
-  const pkey = wallet.getPrivateKeyString()
-  walletProvider = new HDWalletProvider(pkey, RPC)
-} else if (WALLET_PROVIDER_METHOD === 'mnemonic') {
-  walletProvider = new HDWalletProvider(MNEMONIC, RPC)
-}
 
 module.exports = {
   networks: {
-    ganache: {
-      host: 'localhost',
-      port: 8545,
-      network_id: '*',
+    mainnet: {
+      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `https://mainnet.infura.io/v3/${INFURA_API_KEY}`),
+      network_id: 1,
+      gas: 7000000
+    },
+    ropsten: {
+      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `https://ropsten.infura.io/v3/${INFURA_API_KEY}`),
+      network_id: 3,
+      gas: 7000000
+    },
+    fuse: {
+      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `https://rpc.fuse.io`),
+      network_id: 122,
+      gas: 10000000
+    },
+    testnet: {
+      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `https://testnet.fuse.io`),
+      network_id: 123,
+      gas: 10000000
+    },
+    local: {
+      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `http://127.0.0.1:8545`),
+      network_id: 999,
       gas: 10000000
     },
     test: {
@@ -35,18 +39,6 @@ module.exports = {
       port: 8545,
       network_id: '*',
       gas: 10000000
-    },
-    mainnet: {
-      provider: walletProvider,
-      network_id: 1
-    },
-    ropsten: {
-      provider: walletProvider,
-      network_id: 3
-    },
-    local: {
-      provider: walletProvider,
-      network_id: 999
     }
   },
   compilers: {

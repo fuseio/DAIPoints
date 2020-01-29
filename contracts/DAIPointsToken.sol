@@ -17,8 +17,10 @@ contract DAIPointsToken is ERC20, ERC20Detailed, Ownable {
   uint256 public DAI_TO_DAIPOINTS_CONVERSION_RATE = 100;
   IERC20 public DAI;
 
-  constructor () public
-    ERC20Detailed('DAIPoints', 'DPTS', 18) {}
+  constructor (address _dai) public
+    ERC20Detailed('DAIPoints', 'DPTS', 18) {
+      DAI = IERC20(_dai);
+    }
 
   /**
   * @dev Function to be called by owner only to set the DAI token address
