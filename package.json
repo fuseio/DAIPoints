@@ -1,0 +1,41 @@
+{
+  "name": "daipoints",
+  "version": "1.0.0",
+  "description": "Fuse DAIPoints",
+  "main": "",
+  "scripts": {
+    "test": "scripts/test.sh",
+    "compile": "node_modules/.bin/truffle compile",
+    "flatten": "scripts/flatten.sh",
+    "abi": "scripts/abi.sh",
+    "deploy:mainnet": "node_modules/.bin/truffle migrate --reset --network mainnet",
+    "deploy:ropsten": "node_modules/.bin/truffle migrate --reset --network ropsten",
+    "deploy:local": "node_modules/.bin/truffle migrate --reset --network local"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fuseio/DAIPoints.git"
+  },
+  "author": "Lior Rabin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fuseio/DAIPoints/issues"
+  },
+  "homepage": "https://github.com/fuseio/DAIPoints#readme",
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "ethereumjs-wallet": "^0.6.3",
+    "openzeppelin-solidity": "^2.2.0",
+    "truffle-hdwallet-provider": "^1.0.17"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-bn": "^0.2.0",
+    "eth-gas-reporter": "^0.2.14",
+    "ganache-cli": "^6.8.2",
+    "node-jq": "^1.11.0",
+    "truffle": "^5.1.10",
+    "truffle-flattener": "^1.4.2"
+  }
+}
