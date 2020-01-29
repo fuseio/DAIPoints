@@ -45,10 +45,7 @@ contract DAIPointsToken is ERC20, ERC20Detailed, Ownable {
   * @param _amount amount (in wei) of DAI to be transferred from msg.sender balance to this contract's balance
   */
   function getDAIPoints(uint256 _amount) public {
-    // transfer DAI into this contract
-    require(DAI.transferFrom(msg.sender, address(this), _amount), "DAI transfer failed");
-
-    // mint DAIPoints to msg.sender
+    require(DAI.transferFrom(msg.sender, address(this), _amount));
     _mint(msg.sender, _amount.mul(DAI_TO_DAIPOINTS_CONVERSION_RATE));
   }
 
@@ -57,10 +54,8 @@ contract DAIPointsToken is ERC20, ERC20Detailed, Ownable {
   * @param _amount amount (in wei) of DAIPoints to be deducted from msg.sender balance
   */
   function getDAI(uint256 _amount) public {
-    // burn DAIPoints
     _burn(msg.sender, _amount);
-
-    // transfer DAI to msg.sender
-    require(DAI.transferFrom(address(this), msg.sender, _amount.div(DAI_TO_DAIPOINTS_CONVERSION_RATE)), "DAI transfer failed");
+    require(DAI.approve(address(this), _amount));
+    require(DAI.transferFrom(address(this), msg.sender, _amount.div(DAI_TO_DAIPOINTS_CONVERSION_RATE)));
   }
 }
