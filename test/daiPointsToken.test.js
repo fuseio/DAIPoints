@@ -7,6 +7,8 @@ const DAIPointsToken = artifacts.require('DAIPointsToken.sol')
 contract('DAIPointsToken', (accounts) => {
   let owner = accounts[0]
   let notOwner = accounts[1]
+  let alice = accounts[2]
+  let bob = accounts[3]
   let dai
   let dpts
 
@@ -61,14 +63,36 @@ contract('DAIPointsToken', (accounts) => {
       await dpts.setConversionRate(newRate, {from: owner}).should.be.fulfilled
       toBN(newRate).should.be.bignumber.equal(await dpts.DAI_TO_DAIPOINTS_CONVERSION_RATE())
     })
+
+    it('should mint dpts (without transferring dai)', async () => {
+      let amount = toWei(toBN(100000000000000000), 'gwei') // 1
+
+      await dpts.mint(alice, amount, {from: notOwner}).should.be.rejectedWith(ERROR_MSG)
+      toBN(0).should.be.bignumber.equal(await dpts.balanceOf(alice))
+
+      await dpts.mint(alice, amount, {from: owner}).should.be.fulfilled
+      amount.should.be.bignumber.equal(await dpts.balanceOf(alice))
+    })
+
+    it('should transfer dai', async () => {
+      let amount = toWei(toBN(100000000000000000), 'gwei') // 1
+
+      await dai.mint(dpts.address, amount)
+      amount.should.be.bignumber.equal(await dai.balanceOf(dpts.address))
+
+      await dpts.moveDAI(alice, amount, {from: notOwner}).should.be.rejectedWith(ERROR_MSG)
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(alice))
+
+      await dpts.moveDAI(alice, amount, {from: owner}).should.be.fulfilled
+      amount.should.be.bignumber.equal(await dai.balanceOf(alice))
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(dpts.address))
+    })
   })
 
   describe('DAI <> DAIPoints', () => {
     it('should work', async () => {
-      let alice = accounts[1]
-      let bob = accounts[2]
       let rate = await dpts.DAI_TO_DAIPOINTS_CONVERSION_RATE()
-      let daiAmount = toWei(toBN(100000000000000000 || 0), 'gwei') // 1 DAI
+      let daiAmount = toWei(toBN(100000000000000000), 'gwei') // 1
       let dptsAmount = daiAmount.mul(rate)
       let dptsAmountToTransfer = dptsAmount.div(toBN(2))
       let daiAmountAfterTransfer = dptsAmountToTransfer.div(rate)
@@ -79,6 +103,7 @@ contract('DAIPointsToken', (accounts) => {
 
       // alice tries to get dpts (should fail because not approved before)
       await dpts.getDAIPoints(daiAmount, {from: alice}).should.be.rejectedWith(ERROR_MSG)
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(dpts.address))
 
       // alice approves dai to dpts address
       await dai.approve(dpts.address, daiAmount, {from: alice})
@@ -86,6 +111,7 @@ contract('DAIPointsToken', (accounts) => {
       // alice gets dpts in exchange for dai
       await dpts.getDAIPoints(daiAmount, {from: alice}).should.be.fulfilled
       toBN(0).should.be.bignumber.equal(await dai.balanceOf(alice))
+      daiAmount.should.be.bignumber.equal(await dai.balanceOf(dpts.address))
       dptsAmount.should.be.bignumber.equal(await dpts.balanceOf(alice))
 
       // alice sends some dpts to bob
@@ -96,6 +122,7 @@ contract('DAIPointsToken', (accounts) => {
       // bob gets dai in exchange for dpts
       await dpts.getDAI(dptsAmountToTransfer, {from: bob}).should.be.fulfilled
       daiAmountAfterTransfer.should.be.bignumber.equal(await dai.balanceOf(bob))
+      daiAmountAfterTransfer.should.be.bignumber.equal(await dai.balanceOf(dpts.address))
       toBN(0).should.be.bignumber.equal(await dpts.balanceOf(bob))
     })
   })

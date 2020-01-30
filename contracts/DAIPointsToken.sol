@@ -2,6 +2,8 @@ pragma solidity 0.5.2;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Burnable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/utils/Address.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
@@ -11,7 +13,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 * @title DAIPoints token contract
 * @author LiorRabin
 */
-contract DAIPointsToken is ERC20, ERC20Detailed, Ownable {
+contract DAIPointsToken is ERC20, ERC20Detailed, ERC20Mintable, ERC20Burnable, Ownable {
   using SafeMath for uint256;
 
   uint256 public DAI_TO_DAIPOINTS_CONVERSION_RATE = 100;
@@ -57,5 +59,15 @@ contract DAIPointsToken is ERC20, ERC20Detailed, Ownable {
     _burn(msg.sender, _amount);
     require(DAI.approve(address(this), _amount));
     require(DAI.transferFrom(address(this), msg.sender, _amount.div(DAI_TO_DAIPOINTS_CONVERSION_RATE)));
+  }
+
+  /**
+  * @dev Function to be called by owner only to transfer DAI (without exchange to DAIPoints)
+  * @param _to address to transfer DAI from this contract
+  * @param _amount amount (in wei) of DAI to be transferred from this contract
+  */
+  function moveDAI(address _to, uint256 _amount) public onlyOwner {
+    require(DAI.approve(address(this), _amount));
+    require(DAI.transferFrom(address(this), _to, _amount));
   }
 }
