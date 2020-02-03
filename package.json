@@ -1,13 +1,14 @@
 {
   "name": "daipoints",
   "version": "1.0.0",
-  "description": "Fuse DAIPoints",
+  "description": "Fuse DAIPoints & Pooltogether",
   "main": "",
   "scripts": {
     "test": "scripts/test.sh",
     "compile": "node_modules/.bin/truffle compile",
     "flatten": "scripts/flatten.sh",
     "abi": "scripts/abi.sh",
+    "build": "npm run compile && npm run flatten && npm run abi",
     "deploy:mainnet": "node_modules/.bin/truffle migrate --reset --network mainnet",
     "deploy:ropsten": "node_modules/.bin/truffle migrate --reset --network ropsten",
     "deploy:fuse": "node_modules/.bin/truffle migrate --reset --network fuse",
@@ -25,8 +26,10 @@
   },
   "homepage": "https://github.com/fuseio/DAIPoints#readme",
   "dependencies": {
+    "@kleros/kleros": "DeltaCamp/kleros#ca7fbdcc195cfd1267efb99aae905c3400a5ea5f",
     "dotenv": "^8.2.0",
-    "openzeppelin-solidity": "^2.2.0",
+    "fixidity": "DeltaCamp/Fixidity#edf533f77df43b16a7b92f17af7a8930db01f293",
+    "openzeppelin-solidity": "^2.3.0",
     "truffle-hdwallet-provider": "^1.0.17"
   },
   "devDependencies": {
