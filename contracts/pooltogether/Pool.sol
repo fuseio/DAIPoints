@@ -299,13 +299,13 @@ contract Pool is ReentrancyGuard {
   }
 
   /**
-   * @notice Commits the current open draw, if any, and opens the next draw using the passed hash. Really this function is only called twice:
-   * the first after Pool contract creation and the second immediately after.
+   * @notice Commits the current open draw, if any, and opens the next draw using the passed hash.
+   * Really this function is only called twice: the first after Pool contract creation and the second immediately after.
    * Can only be called by an admin.
    * May fire the Committed event, and always fires the Open event.
-   * @param nextSecretHash The secret hash to use to open a new Draw
+   * @param _nextSecretHash The secret hash to use to open a new Draw
    */
-  function openNextDraw(bytes32 nextSecretHash) public onlyAdmin {
+  function openNextDraw(bytes32 _nextSecretHash) public onlyAdmin {
     if (currentCommittedDrawId() > 0) {
       require(_currentCommittedDrawHasBeenRewarded(), "Pool/not-reward");
     }
@@ -313,30 +313,30 @@ contract Pool is ReentrancyGuard {
       uint256 drawId = currentOpenDrawId();
       emit Committed(drawId);
     }
-    _open(nextSecretHash);
+    _open(_nextSecretHash);
   }
 
   /**
    * @notice Ignores the current draw, and opens the next draw.
    * @dev This function will be removed once the winner selection has been decentralized.
-   * @param nextSecretHash The hash to commit for the next draw
+   * @param _nextSecretHash The hash to commit for the next draw
    */
-  function rolloverAndOpenNextDraw(bytes32 nextSecretHash) public onlyAdmin {
+  function rolloverAndOpenNextDraw(bytes32 _nextSecretHash) public onlyAdmin {
     rollover();
-    openNextDraw(nextSecretHash);
+    openNextDraw(_nextSecretHash);
   }
 
   /**
    * @notice Rewards the current committed draw using the passed secret, commits the current open draw, and opens the next draw using the passed secret hash.
    * Can only be called by an admin.
    * Fires the Rewarded event, the Committed event, and the Open event.
-   * @param nextSecretHash The secret hash to use to open a new Draw
-   * @param lastSecret The secret to reveal to reward the current committed Draw.
+   * @param _nextSecretHash The secret hash to use to open a new Draw
+   * @param _lastSecret The secret to reveal to reward the current committed Draw.
    * @param _salt The salt that was used to conceal the secret
    */
-  function rewardAndOpenNextDraw(bytes32 nextSecretHash, bytes32 lastSecret, bytes32 _salt) public onlyAdmin {
-    reward(lastSecret, _salt);
-    openNextDraw(nextSecretHash);
+  function rewardAndOpenNextDraw(bytes32 _nextSecretHash, bytes32 _lastSecret, bytes32 _salt) public onlyAdmin {
+    reward(_lastSecret, _salt);
+    openNextDraw(_nextSecretHash);
   }
 
   /**
@@ -366,7 +366,7 @@ contract Pool is ReentrancyGuard {
     address winningAddress = calculateWinner(entropy);
 
     // Calculate the gross winnings
-    uint256 underlyingBalance = balance(); // TODO:fuse balanceOf oracle account, transferred to itself (Pooltogether)
+    uint256 underlyingBalance = balance();
     uint256 grossWinnings = _capWinnings(underlyingBalance.sub(accountedBalance));
 
     // Calculate the beneficiary fee
@@ -404,12 +404,12 @@ contract Pool is ReentrancyGuard {
     emit FeeCollected(draw.feeBeneficiary, fee, drawId);
   }
 
-  function _awardWinnings(address winner, uint256 amount) internal {
+  function _awardWinnings(address _winner, uint256 _amount) internal {
     // Update balance of the winner
-    balances[winner] = balances[winner].add(amount);
+    balances[_winner] = balances[_winner].add(_amount);
 
     // Enter their winnings into the open draw
-    drawState.deposit(winner, amount);
+    drawState.deposit(_winner, _amount);
   }
 
   /**
