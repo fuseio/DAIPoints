@@ -78,15 +78,14 @@ contract CompoundManager {
   }
 
   function reward() external view returns(uint256) {
-    // TODO
-    /*
-      CDai = Compound $ value
-        CompoundDAI.getAccountSnapshot(address(this))
-        cTokenBalance * exchangeRateMantissa * e^-18 --> this returns the $ value of CDai in wei
-      DAIp = DAIPoints total supply
-      DAI = DAI balance of DAIPoints (reserve)
-      Reward = (CDai - (DAIp/100 - DAI)) * 100
-    */
+    (uint256 error, uint256 cTokenBalance, uint256 borrowBalance, uint256 exchangeRateMantissa) = cToken.getAccountSnapshot(address(this));
+    require(error == 0, "CompoundManager/getAccountSnapshot");
+    uint256 cTokenValue = cTokenBalance.mul(exchangeRateMantissa).div(1e18);
+
+    uint256 dpTotalSupply = dpToken.totalSupply();
+    uint256 daiReserve = token().balanceOf(address(dpToken));
+
+    return (cTokenValue.sub(dpTotalSupply.div(100).sub(daiReserve))).mul(100);
   }
 
   /**
