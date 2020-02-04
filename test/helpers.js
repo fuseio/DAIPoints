@@ -1,4 +1,4 @@
-const { BN } = web3.utils
+const { BN, soliditySha3 } = web3.utils
 
 require('chai')
   .use(require('chai-as-promised'))
@@ -10,3 +10,5 @@ exports.ERROR_MSG_OPCODE = 'VM Exception while processing transaction: invalid o
 exports.INVALID_ARGUMENTS = 'Invalid number of arguments to Solidity function'
 exports.RANDOM_ADDRESS = '0xc0ffee254729296a45a3885639AC7E10F9d54979'
 exports.ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+exports.SECRET = '0x1234123412341234123412341234123412341234123412341234123412341234'
+exports.SALT = '0x1234123412341234123412341234123412341234123412341234123412341236'
