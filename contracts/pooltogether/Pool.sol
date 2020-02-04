@@ -366,8 +366,8 @@ contract Pool is ReentrancyGuard {
     address winningAddress = calculateWinner(entropy);
 
     // Calculate the gross winnings
-    uint256 underlyingBalance = balance();
-    uint256 grossWinnings = _capWinnings(underlyingBalance.sub(accountedBalance));
+    uint256 balanceOfThis = balance();
+    uint256 grossWinnings = _capWinnings(balanceOfThis.sub(accountedBalance));
 
     // Calculate the beneficiary fee
     uint256 fee = _calculateFee(draw.feeFraction, grossWinnings);
@@ -386,7 +386,7 @@ contract Pool is ReentrancyGuard {
     // If there is a winner who is to receive non-zero winnings
     if (winningAddress != address(0) && netWinnings != 0) {
       // Updated the accounted total
-      accountedBalance = underlyingBalance;
+      accountedBalance = balanceOfThis;
 
       _awardWinnings(winningAddress, netWinnings);
     } else {
@@ -706,6 +706,14 @@ contract Pool is ReentrancyGuard {
    */
   function calculateWinner(bytes32 _entropy) public view returns (address) {
     return drawState.drawWithEntropy(_entropy);
+  }
+
+  /**
+   * @notice Returns the total committed balance.  Used to compute an address's chances of winning.
+   * @return The total committed balance.
+   */
+  function committedSupply() public view returns (uint256) {
+    return drawState.committedSupply();
   }
 
   /**
