@@ -14,10 +14,12 @@ contract('DAIPointsToken', (accounts) => {
   let dai
   let compound
   let daip
+  let exchangeRateMantissa = toBN(2e16) // 2%
 
   beforeEach(async () => {
     dai = await DAIMock.new()
-    compound = await CErc20Mock.new(dai.address, 0.02)
+    compound = await CErc20Mock.new()
+    await compound.initialize(dai.address, exchangeRateMantissa)
     daip = await DAIPointsToken.new(dai.address, compound.address)
   })
 
@@ -71,7 +73,8 @@ contract('DAIPointsToken', (accounts) => {
     })
 
     it('should set compound address', async () => {
-      let newCompound = await CErc20Mock.new(dai.address, 0.02)
+      let newCompound = await CErc20Mock.new()
+      await newCompound.initialize(dai.address, exchangeRateMantissa)
 
       await daip.setCompound(newCompound.address, {from: notOwner}).should.be.rejectedWith(ERROR_MSG)
       compound.address.should.be.equal(await daip.compound())
@@ -82,6 +85,7 @@ contract('DAIPointsToken', (accounts) => {
 
     it('should set bridge address', async () => {
       let bridge = await BridgeMock.new()
+      await bridge.initialize(daip.address)
 
       await daip.setBridge(bridge.address, {from: notOwner}).should.be.rejectedWith(ERROR_MSG)
       ZERO_ADDRESS.should.be.equal(await daip.bridge())
