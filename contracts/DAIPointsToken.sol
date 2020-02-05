@@ -17,10 +17,12 @@ import "./compound/ICErc20.sol";
 contract DAIPointsToken is ERC677, ERC20Detailed, ERC20Mintable, ERC20Burnable, Ownable {
   using SafeMath for uint256;
 
-  uint256 public daiToDaipConversionRate = 100;
+  uint256 public constant DECIMALS = 10 ** 18;
+
   IERC20 public dai;
-  address public bridge;
   ICErc20 public compound;
+  uint256 public daiToDaipConversionRate = 100;
+  address public bridge;
   uint256 public fee;
 
   constructor (address _dai, address _compound) public
@@ -52,7 +54,7 @@ contract DAIPointsToken is ERC677, ERC20Detailed, ERC20Mintable, ERC20Burnable, 
   * @param _fee Fee amount
   */
   function setFee(uint256 _fee) public onlyOwner {
-    require(fee <= 100);
+    require(fee <= DECIMALS);
     fee = _fee;
   }
 
@@ -118,23 +120,13 @@ contract DAIPointsToken is ERC677, ERC20Detailed, ERC20Mintable, ERC20Burnable, 
   }
 
   /**
-  * @dev Function to be called by owner only to transfer DAI (without exchange to DAIPoints)
-  * @param _to address to transfer DAI from this contract
-  * @param _amount amount (in wei) of DAI to be transferred from this contract
-  */
-  function moveDAI(address _to, uint256 _amount) public onlyOwner {
-    require(dai.approve(address(this), _amount), "DAI/approve");
-    require(dai.transferFrom(address(this), _to, _amount), "DAI/transferFrom");
-  }
-
-  /**
   * @dev Function to be called by owner only to reward DAIPoints (per DAI interest in Compound)
   * @param _winner address to receive reward
   */
   function reward(address _winner) public onlyOwner bridgeExists {
     // Calculate the gross winnings, fee and reward amount (in DAI)
-    uint256 grossWinningsAmount = _calcGrossWinnings();
-    uint256 feeAmount = grossWinningsAmount.mul(fee).div(100);
+    uint256 grossWinningsAmount = _grossWinnings();
+    uint256 feeAmount = grossWinningsAmount.mul(DECIMALS - fee).div(DECIMALS);
     uint256 rewardAmount = grossWinningsAmount.sub(feeAmount);
 
     // Mint DAIPoints
@@ -149,19 +141,14 @@ contract DAIPointsToken is ERC677, ERC20Detailed, ERC20Mintable, ERC20Burnable, 
     require(dai.transferFrom(address(this), owner(), feeAmount), "DAI/transferFrom");
   }
 
-  function _calcGrossWinnings() private view returns(uint256) {
+  function _grossWinnings() private view returns(uint256) {
     (uint256 error, uint256 compoundBalance, uint256 borrowBalance, uint256 exchangeRateMantissa) = compound.getAccountSnapshot(address(this));
     require(error == 0);
     uint256 compoundValue = compoundBalance.mul(exchangeRateMantissa).div(1e18);
 
-    uint256 daipTotalSupply = ERC20(address(this)).totalSupply();
-    uint256 daiReserve = ERC20(address(this)).balanceOf(bridge);
+    uint256 totalSupply = ERC20(address(this)).totalSupply().div(daiToDaipConversionRate);
 
-    return (compoundValue.sub(daipTotalSupply.div(100).sub(daiReserve))).mul(100);
-  }
-
-  function _calcFeeAmountFromReward(uint256 _rewardAmount) private view returns(uint256) {
-    return _rewardAmount.mul(fee).div(100);
+    return compoundValue.sub(totalSupply);
   }
 
   /**
