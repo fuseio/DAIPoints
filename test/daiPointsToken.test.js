@@ -1,5 +1,5 @@
 const { ERROR_MSG, ZERO_ADDRESS, RANDOM_ADDRESS } = require('./helpers')
-const {toBN, toWei} = web3.utils
+const {toBN, toWei, toChecksumAddress} = web3.utils
 
 const DAIMock = artifacts.require('DAIMock.sol')
 const CErc20Mock = artifacts.require('CErc20Mock.sol')
@@ -14,6 +14,7 @@ contract('DAIPointsToken', (accounts) => {
   let dai
   let compound
   let daip
+  let bridge
   let exchangeRateMantissa = toBN(2e16) // 2%
 
   beforeEach(async () => {
@@ -115,7 +116,7 @@ contract('DAIPointsToken', (accounts) => {
     })
 
     it('should mint daip (without transferring dai)', async () => {
-      let amount = toWei('1', 'ether')
+      let amount = toBN(toWei('1', 'ether'))
 
       await daip.mint(alice, amount, {from: notOwner}).should.be.rejectedWith(ERROR_MSG)
       toBN(0).should.be.bignumber.equal(await daip.balanceOf(alice))
@@ -125,53 +126,70 @@ contract('DAIPointsToken', (accounts) => {
     })
   })
 
-  describe('getDAIPoints', () => {
-    // TODO
+  describe('functionality', () => {
+    beforeEach(async () => {
+      bridge = await BridgeMock.new()
+      await bridge.initialize(daip.address)
+      await daip.setBridge(bridge.address, {from: owner}).should.be.fulfilled
+    })
+
+    it('getDAIPoints', async () => {
+      let rate = await daip.daiToDaipConversionRate()
+      let daiAmount = toBN(toWei('1', 'ether'))
+      let daipAmount = daiAmount.mul(rate)
+      let daipAmountToTransfer = daipAmount.div(toBN(2))
+      let daiAmountAfterTransfer = daipAmountToTransfer.div(rate)
+
+      // alice gets DAI
+      await dai.mint(alice, daiAmount)
+      daiAmount.should.be.bignumber.equal(await dai.balanceOf(alice))
+
+      // alice tries to get DAIPoints (should fail because not approved before)
+      await daip.getDAIPoints(daiAmount, {from: alice}).should.be.rejectedWith(ERROR_MSG)
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(daip.address))
+
+      // alice approves DAI to DAIPoints address
+      await dai.approve(daip.address, daiAmount, {from: alice})
+
+      // flow
+      await daip.getDAIPoints(daiAmount, {from: alice}).should.be.fulfilled
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(alice))
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(daip.address))
+      daipAmount.should.be.bignumber.equal(await daip.totalSupply())
+      daipAmount.should.be.bignumber.equal(await daip.balanceOf(bridge.address))
+      daip.address.should.be.equal(await bridge.from())
+      daipAmount.should.be.bignumber.equal(await bridge.value())
+      toChecksumAddress(alice).should.be.equal(toChecksumAddress(await bridge.data()))
+      daiAmount.should.be.bignumber.equal(await compound.balanceOfUnderlying(daip.address))
+    })
+
+    it('transfer', async () => {
+      let rate = await daip.daiToDaipConversionRate()
+      let daiAmount = toBN(toWei('1', 'ether'))
+      let daipAmount = daiAmount.mul(rate)
+      let daipAmountToTransfer = daipAmount.div(toBN(2))
+      let daiAmountAfterTransfer = daipAmountToTransfer.div(rate)
+
+      // alice gets DAI
+      await dai.mint(alice, daiAmount)
+
+      // alice approves DIA to DAIPoints address
+      await dai.approve(daip.address, daiAmount, {from: alice})
+
+      // alice gets DAIPoints
+      await daip.getDAIPoints(daiAmount, {from: alice}).should.be.fulfilled
+
+      // flow
+      await bridge.onExecuteMessage(alice, daipAmount).should.be.fulfilled // calls DAIPoints.transfer internally
+      daiAmount.should.be.bignumber.equal(await dai.balanceOf(alice))
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(daip.address))
+      toBN(0).should.be.bignumber.equal(await daip.totalSupply())
+      toBN(0).should.be.bignumber.equal(await daip.balanceOf(bridge.address))
+      toBN(0).should.be.bignumber.equal(await compound.balanceOfUnderlying(daip.address))
+    })
+
+    it('reward', async () => {
+      // TODO
+    })
   })
-
-  describe('transfer', () => {
-    // TODO
-  })
-
-  describe('reward', () => {
-    // TODO
-  })
-
-  // describe('DAI <> DAIPoints', () => {
-  //   it('should work', async () => {
-  //     let rate = await daip.daiToDaipConversionRate()
-  //     let daiAmount = toWei(toBN(100000000000000000), 'gwei') // 1
-  //     let daipAmount = daiAmount.mul(rate)
-  //     let daipAmountToTransfer = daipAmount.div(toBN(2))
-  //     let daiAmountAfterTransfer = daipAmountToTransfer.div(rate)
-
-  //     // alice gets dai
-  //     await dai.mint(alice, daiAmount)
-  //     daiAmount.should.be.bignumber.equal(await dai.balanceOf(alice))
-
-  //     // alice tries to get daip (should fail because not approved before)
-  //     await daip.getDAIPoints(daiAmount, {from: alice}).should.be.rejectedWith(ERROR_MSG)
-  //     toBN(0).should.be.bignumber.equal(await dai.balanceOf(daip.address))
-
-  //     // alice approves dai to daip address
-  //     await dai.approve(daip.address, daiAmount, {from: alice})
-
-  //     // alice gets daip in exchange for dai
-  //     await daip.getDAIPoints(daiAmount, {from: alice}).should.be.fulfilled
-  //     toBN(0).should.be.bignumber.equal(await dai.balanceOf(alice))
-  //     daiAmount.should.be.bignumber.equal(await dai.balanceOf(daip.address))
-  //     daipAmount.should.be.bignumber.equal(await daip.balanceOf(alice))
-
-  //     // alice sends some daip to bob
-  //     await daip.transfer(bob, daipAmountToTransfer, {from: alice}).should.be.fulfilled
-  //     daipAmountToTransfer.should.be.bignumber.equal(await daip.balanceOf(alice))
-  //     daipAmountToTransfer.should.be.bignumber.equal(await daip.balanceOf(bob))
-
-  //     // bob gets dai in exchange for daip
-  //     await daip.getDAI(daipAmountToTransfer, {from: bob}).should.be.fulfilled
-  //     daiAmountAfterTransfer.should.be.bignumber.equal(await dai.balanceOf(bob))
-  //     daiAmountAfterTransfer.should.be.bignumber.equal(await dai.balanceOf(daip.address))
-  //     toBN(0).should.be.bignumber.equal(await daip.balanceOf(bob))
-  //   })
-  // })
 })

@@ -21,6 +21,7 @@ pragma solidity 0.5.2;
 contract ICErc20 {
     address public underlying;
     function mint(uint256 mintAmount) external returns (uint);
+    function balanceOfUnderlying(address owner) external view returns (uint);
     function redeemUnderlying(uint256 redeemAmount) external returns (uint);
     function getAccountSnapshot(address account) external view returns (uint, uint, uint, uint);
 }

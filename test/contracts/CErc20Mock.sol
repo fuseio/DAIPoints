@@ -37,6 +37,10 @@ contract CErc20Mock is ICErc20 {
     return 0;
   }
 
+  function balanceOfUnderlying(address account) external view returns (uint256) {
+    return balances[account];
+  }
+
   function redeemUnderlying(uint256 requestedAmount) external returns (uint256) {
     require(requestedAmount <= balances[msg.sender], "insufficient underlying funds");
     balances[msg.sender] = balances[msg.sender] - requestedAmount;
