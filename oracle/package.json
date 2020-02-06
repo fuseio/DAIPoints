@@ -1,0 +1,22 @@
+{
+  "name": "daipoints-oracle",
+  "version": "1.0.0",
+  "description": "Fuse DAIPoints oracle",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fuseio/DAIPoints.git"
+  },
+  "author": "Lior Rabin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fuseio/DAIPoints/issues"
+  },
+  "homepage": "https://github.com/fuseio/DAIPoints#readme",
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "graphql-request": "^1.8.2",
+    "web3": "^2.0.0-alpha.1"
+  }
+}

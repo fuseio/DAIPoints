@@ -1,7 +1,7 @@
 {
-  "name": "daipoints",
+  "name": "daipoints-contracts",
   "version": "1.0.0",
-  "description": "Fuse DAIPoints",
+  "description": "Fuse DAIPoints contracts",
   "main": "",
   "scripts": {
     "test": "scripts/test.sh",
@@ -24,8 +24,7 @@
   "dependencies": {
     "dotenv": "^8.2.0",
     "openzeppelin-solidity": "^2.2.0",
-    "truffle-hdwallet-provider": "^1.0.17",
-    "web3": "^2.0.0-alpha.1"
+    "truffle-hdwallet-provider": "^1.0.17"
   },
   "devDependencies": {
     "chai": "^4.2.0",
