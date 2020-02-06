@@ -14,21 +14,6 @@ module.exports = {
       network_id: 1,
       gas: 7000000
     },
-    ropsten: {
-      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `https://ropsten.infura.io/v3/${INFURA_API_KEY}`),
-      network_id: 3,
-      gas: 7000000
-    },
-    fuse: {
-      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `https://rpc.fuse.io`),
-      network_id: 122,
-      gas: 10000000
-    },
-    testnet: {
-      provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `https://testnet.fuse.io`),
-      network_id: 123,
-      gas: 10000000
-    },
     local: {
       provider: () => new HDWalletProvider(MNEMONIC || PRIVATE_KEY, `http://127.0.0.1:8545`),
       network_id: 999,
