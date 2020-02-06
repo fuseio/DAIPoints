@@ -1,10 +1,12 @@
 const { ERROR_MSG, ZERO_ADDRESS, RANDOM_ADDRESS } = require('./helpers')
-const {toBN, toWei, toChecksumAddress} = web3.utils
+const {toBN, toWei, fromWei, toChecksumAddress} = web3.utils
 
 const DAIMock = artifacts.require('DAIMock.sol')
 const CErc20Mock = artifacts.require('CErc20Mock.sol')
 const BridgeMock = artifacts.require('BridgeMock.sol')
 const DAIPointsToken = artifacts.require('DAIPointsToken.sol')
+
+const DECIMALS = toBN(1e18)
 
 contract('DAIPointsToken', (accounts) => {
   let owner = accounts[0]
@@ -15,7 +17,7 @@ contract('DAIPointsToken', (accounts) => {
   let compound
   let daip
   let bridge
-  let exchangeRateMantissa = toBN(2e16) // 2%
+  let exchangeRateMantissa = toBN(2e16).add(DECIMALS) // 2%
 
   beforeEach(async () => {
     dai = await DAIMock.new()
@@ -137,8 +139,6 @@ contract('DAIPointsToken', (accounts) => {
       let rate = await daip.daiToDaipConversionRate()
       let daiAmount = toBN(toWei('1', 'ether'))
       let daipAmount = daiAmount.mul(rate)
-      let daipAmountToTransfer = daipAmount.div(toBN(2))
-      let daiAmountAfterTransfer = daipAmountToTransfer.div(rate)
 
       // alice gets DAI
       await dai.mint(alice, daiAmount)
@@ -167,8 +167,6 @@ contract('DAIPointsToken', (accounts) => {
       let rate = await daip.daiToDaipConversionRate()
       let daiAmount = toBN(toWei('1', 'ether'))
       let daipAmount = daiAmount.mul(rate)
-      let daipAmountToTransfer = daipAmount.div(toBN(2))
-      let daiAmountAfterTransfer = daipAmountToTransfer.div(rate)
 
       // alice gets DAI
       await dai.mint(alice, daiAmount)
@@ -188,8 +186,138 @@ contract('DAIPointsToken', (accounts) => {
       toBN(0).should.be.bignumber.equal(await compound.balanceOfUnderlying(daip.address))
     })
 
-    it('reward', async () => {
-      // TODO
+    it('reward (without fee)', async () => {
+      let rate = await daip.daiToDaipConversionRate()
+      let daiAmountAlice = toBN(toWei('1', 'ether'))
+      let daipAmountAlice = daiAmountAlice.mul(rate)
+      let daiAmountBob = toBN(toWei('2', 'ether'))
+      let daipAmountBob = daiAmountBob.mul(rate)
+
+      // console.log({alice, bob})
+
+      // alice gets DAI
+      await dai.mint(alice, daiAmountAlice)
+
+      // alice approves DIA to DAIPoints address
+      await dai.approve(daip.address, daiAmountAlice, {from: alice})
+
+      // alice gets DAIPoints
+      await daip.getDAIPoints(daiAmountAlice, {from: alice}).should.be.fulfilled
+
+      // bob gets DAI
+      await dai.mint(bob, daiAmountBob)
+
+      // bob approves DIA to DAIPoints address
+      await dai.approve(daip.address, daiAmountBob, {from: bob})
+
+      // bob gets DAIPoints
+      await daip.getDAIPoints(daiAmountBob, {from: bob}).should.be.fulfilled
+
+      // pick a winner and simulate reward
+
+      let winner = (Math.floor(Math.random() * 2) + 1) % 2 === 0 ? alice : bob
+      // console.log({winner})
+
+      let compoundBalance = await compound.balanceOfUnderlying(daip.address)
+      // console.log('compoundBalance', fromWei(compoundBalance))
+
+      let compoundValue = compoundBalance.mul(exchangeRateMantissa).div(DECIMALS)
+      // console.log('compoundValue', fromWei(compoundValue))
+
+      let daipTotalSupply = await daip.totalSupply()
+      // console.log('daipTotalSupply', fromWei(daipTotalSupply))
+
+      let daipTotalSupplyInDai = daipTotalSupply.div(rate)
+      // console.log('daipTotalSupplyInDai', fromWei(daipTotalSupplyInDai))
+
+      let grossWinnings = compoundValue.sub(daipTotalSupplyInDai)
+      // console.log('grossWinnings', fromWei(grossWinnings))
+
+      let daipReward = grossWinnings.mul(rate)
+      // console.log('daipReward', fromWei(daipReward))
+
+      let daipExpectedTotalSupply = daipTotalSupply.add(daipReward)
+      // console.log('daipExpectedTotalSupply', fromWei(daipExpectedTotalSupply))
+
+      // flow
+      await daip.reward(winner).should.be.fulfilled
+      daipExpectedTotalSupply.should.be.bignumber.equal(await daip.totalSupply())
+      daipExpectedTotalSupply.should.be.bignumber.equal(await daip.balanceOf(bridge.address))
+      daip.address.should.be.equal(await bridge.from())
+      daipReward.should.be.bignumber.equal(await bridge.value())
+      toChecksumAddress(winner).should.be.equal(toChecksumAddress(await bridge.data()))
+    })
+
+    it('reward (with fee)', async () => {
+      let rate = await daip.daiToDaipConversionRate()
+      let daiAmountAlice = toBN(toWei('1', 'ether'))
+      let daipAmountAlice = daiAmountAlice.mul(rate)
+      let daiAmountBob = toBN(toWei('2', 'ether'))
+      let daipAmountBob = daiAmountBob.mul(rate)
+
+      // set fee
+      let fee = toBN(1e17) // 10%
+      await daip.setFee(fee, {from: owner}).should.be.fulfilled
+
+      // console.log({alice, bob})
+
+      // alice gets DAI
+      await dai.mint(alice, daiAmountAlice)
+
+      // alice approves DIA to DAIPoints address
+      await dai.approve(daip.address, daiAmountAlice, {from: alice})
+
+      // alice gets DAIPoints
+      await daip.getDAIPoints(daiAmountAlice, {from: alice}).should.be.fulfilled
+
+      // bob gets DAI
+      await dai.mint(bob, daiAmountBob)
+
+      // bob approves DIA to DAIPoints address
+      await dai.approve(daip.address, daiAmountBob, {from: bob})
+
+      // bob gets DAIPoints
+      await daip.getDAIPoints(daiAmountBob, {from: bob}).should.be.fulfilled
+
+      // pick a winner and simulate reward
+      let winner = (Math.floor(Math.random() * 2) + 1) % 2 === 0 ? alice : bob
+      // console.log({winner})
+
+      let compoundBalance = await compound.balanceOfUnderlying(daip.address)
+      // console.log('compoundBalance', fromWei(compoundBalance))
+
+      let compoundValue = compoundBalance.mul(exchangeRateMantissa).div(DECIMALS)
+      // console.log('compoundValue', fromWei(compoundValue))
+
+      let daipTotalSupply = await daip.totalSupply()
+      // console.log('daipTotalSupply', fromWei(daipTotalSupply))
+
+      let daipTotalSupplyInDai = daipTotalSupply.div(rate)
+      // console.log('daipTotalSupplyInDai', fromWei(daipTotalSupplyInDai))
+
+      let grossWinnings = compoundValue.sub(daipTotalSupplyInDai)
+      // console.log('grossWinnings', fromWei(grossWinnings))
+
+      let rewardAmount = grossWinnings.mul(DECIMALS.sub(fee)).div(DECIMALS)
+      // console.log('rewardAmount', fromWei(rewardAmount))
+
+      let feeAmount = grossWinnings.sub(rewardAmount)
+      // console.log('feeAmount', fromWei(feeAmount))
+
+      let daipReward = rewardAmount.mul(rate)
+      // console.log('daipReward', fromWei(daipReward))
+
+      let daipExpectedTotalSupply = daipTotalSupply.add(daipReward)
+      // console.log('daipExpectedTotalSupply', fromWei(daipExpectedTotalSupply))
+
+      // flow
+      await daip.reward(winner).should.be.fulfilled
+      daipExpectedTotalSupply.should.be.bignumber.equal(await daip.totalSupply())
+      daipExpectedTotalSupply.should.be.bignumber.equal(await daip.balanceOf(bridge.address))
+      daip.address.should.be.equal(await bridge.from())
+      daipReward.should.be.bignumber.equal(await bridge.value())
+      toChecksumAddress(winner).should.be.equal(toChecksumAddress(await bridge.data()))
+      feeAmount.should.be.bignumber.equal(await dai.balanceOf(owner))
     })
   })
 })

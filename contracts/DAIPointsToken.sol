@@ -126,19 +126,25 @@ contract DAIPointsToken is ERC677, ERC20Detailed, ERC20Mintable, ERC20Burnable, 
   function reward(address _winner) public onlyOwner bridgeExists {
     // Calculate the gross winnings, fee and reward amount (in DAI)
     uint256 grossWinningsAmount = _grossWinnings();
-    uint256 feeAmount = grossWinningsAmount.mul(DECIMALS - fee).div(DECIMALS);
-    uint256 rewardAmount = grossWinningsAmount.sub(feeAmount);
+    uint256 rewardAmount = grossWinningsAmount.mul(DECIMALS.sub(fee)).div(DECIMALS);
+    uint256 feeAmount = grossWinningsAmount.sub(rewardAmount);
 
     // Mint DAIPoints
-    uint256 daipAmount = rewardAmount.mul(daiToDaipConversionRate);
-    _mint(address(this), daipAmount);
+    uint256 daipRewardAmount = rewardAmount.mul(daiToDaipConversionRate);
+    _mint(address(this), daipRewardAmount);
 
     // Transfer reward (on other side) to the winner using the bridge
-    require(ERC677(address(this)).transferAndCall(bridge, daipAmount, abi.encodePacked(_winner)), "DAIPoints/transferAndCall");
+    require(ERC677(address(this)).transferAndCall(bridge, daipRewardAmount, abi.encodePacked(_winner)), "DAIPoints/transferAndCall");
 
     // Transfer fee (in DAI) to the owner
-    require(dai.approve(address(this), feeAmount), "DAI/approve");
-    require(dai.transferFrom(address(this), owner(), feeAmount), "DAI/transferFrom");
+    if (feeAmount > 0) {
+      // Withdraw from Compound and transfer
+      require(compound.redeemUnderlying(feeAmount) == 0, "Compound/redeemUnderlying");
+
+      // Transfer DAI to the recipient
+      require(dai.approve(address(this), feeAmount), "DAI/approve");
+      require(dai.transferFrom(address(this), owner(), feeAmount), "DAI/transferFrom");
+    }
   }
 
   function _grossWinnings() private view returns(uint256) {
