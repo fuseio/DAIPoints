@@ -147,7 +147,7 @@ const getDrawInfo = async () => {
         amount: fromWei(await getReward()),
         growthRatePerSec: fromWei(rewardGrowthRatePerSec),
         estimated: fromWei(estimatedReward)
-      }
+      },
       blockNumber: await getBlockNumber(),
       possibleWinnersCount: await getCommunityMembers(true)
     },
