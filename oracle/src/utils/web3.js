@@ -2,7 +2,7 @@ require('dotenv').config()
 const Web3 = require('web3')
 
 const {
-  INFURA_API_KEY,
+  RPC,
   DAI_POINTS_ADDRESS,
   COMPOUND_ADDRESS
 } = process.env
@@ -10,8 +10,8 @@ const {
 const COMPOUND_ABI = require('../../abis/cDAI.abi')
 const DAI_POINTS_ABI = require('../../abis/DAIp.abi')
 
-const web3 = new Web3(new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${INFURA_API_KEY}`))
-const { fromWei, toBN } = web3.utils
+const web3 = new Web3(new Web3.providers.HttpProvider(RPC))
+const { toWei, fromWei, toBN } = web3.utils
 
 const Compound = new web3.eth.Contract(COMPOUND_ABI, COMPOUND_ADDRESS)
 const DAIp = new web3.eth.Contract(DAI_POINTS_ABI, DAI_POINTS_ADDRESS)
@@ -20,6 +20,10 @@ const DECIMALS = toBN(1e18)
 
 const getBlockNumber = async () => {
   return web3.eth.getBlockNumber()
+}
+
+const getNonce = async (account) => {
+  return web3.eth.getTransactionCount(account)
 }
 
 const contracts = {
@@ -32,7 +36,8 @@ const contracts = {
     },
     fee: async () => {
       return toBN(await DAIp.methods.fee.call())
-    }
+    },
+    instance: DAIp
   },
   Compound: {
     getAccountSnapshot: async () => {
@@ -46,13 +51,16 @@ const contracts = {
     },
     supplyRatePerBlock: async () => {
       return toBN(await Compound.methods.supplyRatePerBlock().call())
-    }
+    },
+    instance: Compound
   }
 }
 
 module.exports = {
   getBlockNumber,
+  getNonce,
   contracts,
+  toWei,
   fromWei,
   toBN,
   DECIMALS

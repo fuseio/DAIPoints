@@ -3,6 +3,7 @@ const moment = require('moment')
 const logger = require('../services/logger')
 const { getBlockNumber, contracts, fromWei, toBN, DECIMALS } = require('./web3')
 const { getCommunityMembers } = require('./graph')
+const { reward } = require('./tx')
 
 const Draw = mongoose.model('Draw')
 
@@ -132,9 +133,8 @@ const drawTask = async () => {
     if (now.isSameOrAfter(draw.endTime)) {
       logger.info('need to close draw and open a new one')
       const winner = await selectWinner()
-      // TODO call the "reward" transaction and get logs for the actual reward transferred
-      const reward = 0 // TODO remove this after real implementation
-      await Draw.close(draw.id, winner, reward)
+      const { rewardAmount } = await reward(winner)
+      await Draw.close(draw.id, winner, rewardAmount)
       await Draw.create()
     }
   } else {
