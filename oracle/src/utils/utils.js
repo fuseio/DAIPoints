@@ -10,7 +10,8 @@ const {
   GRAPH_URL,
   DAI_POINTS_ADDRESS,
   COMPOUND_ADDRESS,
-  DAI_POINTS_COMMUNITY_ADDRESS
+  DAI_POINTS_COMMUNITY_ADDRESS,
+  DRAW_DURATION_SECONDS
 } = process.env
 
 const COMPOUND_ABI = require('../../abis/cDAI.abi')
@@ -23,6 +24,8 @@ const graphClient = new GraphQLClient(GRAPH_URL)
 const Compound = new web3.eth.Contract(COMPOUND_ABI, COMPOUND_ADDRESS)
 const DAIp = new web3.eth.Contract(DAI_POINTS_ABI, DAI_POINTS_ADDRESS)
 
+const DECIMALS = toBN(1e18)
+
 const Draw = mongoose.model('Draw')
 
 const getBlockNumber = async () => {
@@ -32,12 +35,11 @@ const getBlockNumber = async () => {
 
 const getReward = async () => {
   logger.info('getReward')
-  const decimals = toBN(1e18)
 
   const result = await Compound.methods.getAccountSnapshot(DAI_POINTS_ADDRESS).call()
   const compoundBalance = toBN(result[1])
   const exchangeRateMantissa = toBN(result[3])
-  const compoundValue = compoundBalance.mul(exchangeRateMantissa).div(decimals)
+  const compoundValue = compoundBalance.mul(exchangeRateMantissa).div(DECIMALS)
   logger.debug(`compoundValue: ${fromWei(toBN(compoundValue))}`)
 
   const daiTotalSupply = toBN((await DAIp.methods.totalSupply.call()).div(await DAIp.methods.daiToDaipConversionRate.call()))
@@ -49,15 +51,12 @@ const getReward = async () => {
   const fee = toBN(await DAIp.methods.fee.call())
   logger.debug(`fee: ${fromWei(fee)}`)
 
-  const daiRewardAmount = grossWinnings.mul(decimals.sub(fee)).div(decimals)
+  const daiRewardAmount = grossWinnings.mul(DECIMALS.sub(fee)).div(DECIMALS)
   logger.debug(`daiRewardAmount: ${fromWei(daiRewardAmount)}`)
 
   const rate = toBN(await DAIp.methods.daiToDaipConversionRate.call())
   const daipRewardAmount = daiRewardAmount.mul(rate)
   logger.info(`daipRewardAmount: ${fromWei(daipRewardAmount)}`)
-
-  const blockNumber = await getBlockNumber()
-  logger.debug(`blockNumber: ${blockNumber}`)
 
   return daipRewardAmount
 }
@@ -85,15 +84,48 @@ const getLastWinning = async () => {
   logger.info('getLastWinning')
   const draw = await Draw.findOne({ state: 'CLOSED' }).sort({ createdAt: -1 })
   return {
-    lastWinner: draw.winner,
-    lastPrizeAmount: draw.reward
+    lastWinner: draw && draw.winner,
+    lastPrizeAmount: draw && draw.reward
   }
 }
 
-const getEstimatedReward = async () => {
+const getEstimatedRewardAndGrowthRate = async () => {
   logger.info('getEstimatedReward')
-  // TODO
-  return toBN(0)
+  // https://github.com/pooltogether/pooltogetherjs/blob/master/src/utils/calculatePrizeEstimate.js
+  const { endTime } = await Draw.findOne({ state: 'OPEN' })
+  const secondsToDrawEnd = moment(endTime).diff(moment(), 'seconds')
+  logger.debug(`secondsToDrawEnd: ${secondsToDrawEnd}`)
+
+  const blocksToDrawEnd = toBN(Math.floor(secondsToDrawEnd / 15))
+  logger.debug(`blocksToDrawEnd: ${blocksToDrawEnd}`)
+
+  const supplyRatePerBlock = toBN(await Compound.methods.supplyRatePerBlock().call())
+  logger.debug(`supplyRatePerBlock: ${supplyRatePerBlock}`)
+
+  const interestRate = blocksToDrawEnd.mul(supplyRatePerBlock)
+  logger.debug(`interestRate: ${interestRate}`)
+
+  const result = await Compound.methods.getAccountSnapshot(DAI_POINTS_ADDRESS).call()
+  const compoundBalance = toBN(result[1])
+  logger.debug(`compoundBalance: ${compoundBalance}`)
+
+  const estimatedInterestAccrued = interestRate.mul(compoundBalance).div(DECIMALS)
+  logger.debug(`estimatedInterestAccrued: ${estimatedInterestAccrued}`)
+
+  const rate = toBN(await DAIp.methods.daiToDaipConversionRate.call())
+
+  const daipCurrentReward = await getReward()
+  logger.debug(`daipCurrentReward: ${daipCurrentReward}`)
+
+  const daipEstimatedReward = daipCurrentReward.add(estimatedInterestAccrued.mul(rate))
+  logger.debug(`daipEstimatedReward: ${fromWei(daipEstimatedReward)}`)
+
+  const rewardGrowthRatePerSec = daipEstimatedReward.sub(daipCurrentReward).div(toBN(secondsToDrawEnd))
+
+  return {
+    estimatedReward: daipEstimatedReward,
+    rewardGrowthRatePerSec
+  }
 }
 
 const getNextDrawEndTime = async () => {
@@ -102,22 +134,18 @@ const getNextDrawEndTime = async () => {
   return endTime
 }
 
-const getRewardGrowthRatePerSec = async () => {
-  logger.info('getRewardGrowthRatePerSec')
-  // TODO
-}
-
 const getDrawInfo = async () => {
   logger.info('getDrawInfo')
 
   const { lastWinner, lastPrizeAmount } = await getLastWinning()
+  const { estimatedReward, rewardGrowthRatePerSec } = await getEstimatedRewardAndGrowthRate()
 
   return {
-    estimatedReward: fromWei(await getEstimatedReward()),
+    estimatedReward: fromWei(estimatedReward),
     nextPrizeTimestamp: moment(await getNextDrawEndTime()).format('x'),
     currentPrizeAmount: fromWei(await getReward()),
     currentBlockNumber: await getBlockNumber(),
-    rewardGrowthRatePerSec: getRewardGrowthRatePerSec(),
+    rewardGrowthRatePerSec: fromWei(rewardGrowthRatePerSec),
     lastPrizeAmount,
     lastWinner,
     possibleWinnersCount: await getCommunityMembers(true)
