@@ -4,7 +4,8 @@
   "description": "Fuse DAIPoints oracle",
   "main": "",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/app.js",
+    "lint": "node_modules/.bin/standard"
   },
   "repository": {
     "type": "git",
@@ -17,10 +18,19 @@
   },
   "homepage": "https://github.com/fuseio/DAIPoints#readme",
   "dependencies": {
+    "agenda": "^2.3.0",
     "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "express-async-errors": "^3.1.1",
+    "express-pino-logger": "^4.0.0",
     "graphql-request": "^1.8.2",
+    "moment": "^2.24.0",
+    "mongoose": "^5.8.11",
     "pino": "^5.16.0",
     "pino-pretty": "^3.5.0",
     "web3": "^2.0.0-alpha.1"
+  },
+  "devDependencies": {
+    "standard": "^14.3.1"
   }
 }
