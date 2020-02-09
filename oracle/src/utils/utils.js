@@ -85,7 +85,7 @@ const getLastWinning = async () => {
   const draw = await Draw.findOne({ state: 'CLOSED' }).sort({ createdAt: -1 })
   return {
     lastWinner: draw && draw.winner,
-    lastPrizeAmount: draw && draw.reward
+    lastReward: draw && draw.reward
   }
 }
 
@@ -137,18 +137,24 @@ const getNextDrawEndTime = async () => {
 const getDrawInfo = async () => {
   logger.info('getDrawInfo')
 
-  const { lastWinner, lastPrizeAmount } = await getLastWinning()
+  const { lastWinner, lastReward } = await getLastWinning()
   const { estimatedReward, rewardGrowthRatePerSec } = await getEstimatedRewardAndGrowthRate()
 
   return {
-    estimatedReward: fromWei(estimatedReward),
-    nextPrizeTimestamp: moment(await getNextDrawEndTime()).format('x'),
-    currentPrizeAmount: fromWei(await getReward()),
-    currentBlockNumber: await getBlockNumber(),
-    rewardGrowthRatePerSec: fromWei(rewardGrowthRatePerSec),
-    lastPrizeAmount,
-    lastWinner,
-    possibleWinnersCount: await getCommunityMembers(true)
+    current: {
+      endTimestamp: moment(await getNextDrawEndTime()).format('x'),
+      reward: {
+        amount: fromWei(await getReward()),
+        growthRatePerSec: fromWei(rewardGrowthRatePerSec),
+        estimated: fromWei(estimatedReward)
+      }
+      blockNumber: await getBlockNumber(),
+      possibleWinnersCount: await getCommunityMembers(true)
+    },
+    previous: {
+      reward: lastReward,
+      winner: lastWinner
+    }
   }
 }
 
