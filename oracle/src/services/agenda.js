@@ -1,7 +1,7 @@
 require('dotenv').config()
 const Agenda = require('agenda')
 const logger = require('./logger')
-const { handleDraw } = require('../utils/utils')
+const { drawTask } = require('../utils/utils')
 
 const {
   MONGO_URI,
@@ -20,12 +20,12 @@ async function start () {
 
   await agenda.start()
 
-  agenda.define('check draw state', async (job) => {
-    logger.info('check draw state')
-    await handleDraw()
+  agenda.define('draw-state', async (job) => {
+    logger.info('draw-state')
+    await drawTask()
   })
 
-  await agenda.every(`${PERIODIC_INTERVAL_SECONDS} seconds`, 'check draw state')
+  await agenda.every(`${PERIODIC_INTERVAL_SECONDS} seconds`, 'draw-state')
 
   logger.info('Agenda job scheduling is successfully defined')
 }

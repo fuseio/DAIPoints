@@ -1,74 +1,40 @@
-require('dotenv').config()
-const Web3 = require('web3')
-const { GraphQLClient } = require('graphql-request')
-const logger = require('../services/logger')
 const mongoose = require('mongoose')
 const moment = require('moment')
-
-const {
-  INFURA_API_KEY,
-  GRAPH_URL,
-  DAI_POINTS_ADDRESS,
-  COMPOUND_ADDRESS,
-  DAI_POINTS_COMMUNITY_ADDRESS,
-  DRAW_DURATION_SECONDS
-} = process.env
-
-const COMPOUND_ABI = require('../../abis/cDAI.abi')
-const DAI_POINTS_ABI = require('../../abis/DAIp.abi')
-
-const web3 = new Web3(new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${INFURA_API_KEY}`))
-const { fromWei, toBN } = web3.utils
-const graphClient = new GraphQLClient(GRAPH_URL)
-
-const Compound = new web3.eth.Contract(COMPOUND_ABI, COMPOUND_ADDRESS)
-const DAIp = new web3.eth.Contract(DAI_POINTS_ABI, DAI_POINTS_ADDRESS)
-
-const DECIMALS = toBN(1e18)
+const logger = require('../services/logger')
+const { getBlockNumber, contracts, fromWei, toBN, DECIMALS } = require('./web3')
+const { getCommunityMembers } = require('./graph')
 
 const Draw = mongoose.model('Draw')
-
-const getBlockNumber = async () => {
-  logger.info('getBlockNumber')
-  return web3.eth.getBlockNumber()
-}
 
 const getReward = async () => {
   logger.info('getReward')
 
-  const result = await Compound.methods.getAccountSnapshot(DAI_POINTS_ADDRESS).call()
-  const compoundBalance = toBN(result[1])
-  const exchangeRateMantissa = toBN(result[3])
+  const { compoundBalance, exchangeRateMantissa } = await contracts.Compound.getAccountSnapshot()
   const compoundValue = compoundBalance.mul(exchangeRateMantissa).div(DECIMALS)
   logger.debug(`compoundValue: ${fromWei(toBN(compoundValue))}`)
 
-  const daiTotalSupply = toBN((await DAIp.methods.totalSupply.call()).div(await DAIp.methods.daiToDaipConversionRate.call()))
+  const daipTotalSupply = await contracts.DAIp.totalSupply()
+  logger.debug(`daipTotalSupply: ${fromWei(daipTotalSupply)}`)
+
+  const rate = await contracts.DAIp.rate()
+  logger.debug(`rate: ${fromWei(rate)}`)
+
+  const daiTotalSupply = daipTotalSupply.div(rate)
   logger.debug(`daiTotalSupply: ${fromWei(daiTotalSupply)}`)
 
   const grossWinnings = compoundValue.sub(daiTotalSupply)
   logger.debug(`grossWinnings: ${fromWei(grossWinnings)}`)
 
-  const fee = toBN(await DAIp.methods.fee.call())
+  const fee = toBN(await contracts.DAIp.fee())
   logger.debug(`fee: ${fromWei(fee)}`)
 
   const daiRewardAmount = grossWinnings.mul(DECIMALS.sub(fee)).div(DECIMALS)
   logger.debug(`daiRewardAmount: ${fromWei(daiRewardAmount)}`)
 
-  const rate = toBN(await DAIp.methods.daiToDaipConversionRate.call())
   const daipRewardAmount = daiRewardAmount.mul(rate)
   logger.info(`daipRewardAmount: ${fromWei(daipRewardAmount)}`)
 
   return daipRewardAmount
-}
-
-const getCommunityMembers = async (getCount) => {
-  logger.info('getCommunityMembers')
-  const query = `{communities(where:{address:"${DAI_POINTS_COMMUNITY_ADDRESS}"}) {entitiesList {communityEntities(where:{isUser: true, isAdmin: false}) {id, address}}}}`
-  logger.debug(`query: ${query.replace('\n', '')}`)
-  const data = await graphClient.request(query)
-  const communityMembers = data.communities[0].entitiesList.communityEntities
-  logger.debug(`found ${communityMembers.length} users`)
-  return (getCount ? communityMembers.length : communityMembers)
 }
 
 const selectWinner = async () => {
@@ -99,20 +65,20 @@ const getEstimatedRewardAndGrowthRate = async () => {
   const blocksToDrawEnd = toBN(Math.floor(secondsToDrawEnd / 15))
   logger.debug(`blocksToDrawEnd: ${blocksToDrawEnd}`)
 
-  const supplyRatePerBlock = toBN(await Compound.methods.supplyRatePerBlock().call())
+  const supplyRatePerBlock = await contracts.Compound.supplyRatePerBlock()
   logger.debug(`supplyRatePerBlock: ${supplyRatePerBlock}`)
 
   const interestRate = blocksToDrawEnd.mul(supplyRatePerBlock)
   logger.debug(`interestRate: ${interestRate}`)
 
-  const result = await Compound.methods.getAccountSnapshot(DAI_POINTS_ADDRESS).call()
-  const compoundBalance = toBN(result[1])
+  const { compoundBalance } = await contracts.Compound.getAccountSnapshot()
   logger.debug(`compoundBalance: ${compoundBalance}`)
 
   const estimatedInterestAccrued = interestRate.mul(compoundBalance).div(DECIMALS)
   logger.debug(`estimatedInterestAccrued: ${estimatedInterestAccrued}`)
 
-  const rate = toBN(await DAIp.methods.daiToDaipConversionRate.call())
+  const rate = await contracts.DAIp.rate()
+  logger.debug(`rate: ${fromWei(rate)}`)
 
   const daipCurrentReward = await getReward()
   logger.debug(`daipCurrentReward: ${daipCurrentReward}`)
@@ -158,7 +124,7 @@ const getDrawInfo = async () => {
   }
 }
 
-const handleDraw = async () => {
+const drawTask = async () => {
   const draw = await Draw.findOne({ state: 'OPEN' })
   if (draw) {
     logger.info(`there's an open draw: ${draw}, ending at: ${draw.endTime}`)
@@ -179,5 +145,5 @@ const handleDraw = async () => {
 
 module.exports = {
   getDrawInfo,
-  handleDraw
+  drawTask
 }
