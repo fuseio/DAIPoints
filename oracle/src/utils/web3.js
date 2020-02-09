@@ -1,5 +1,6 @@
 require('dotenv').config()
 const Web3 = require('web3')
+const isArray = require('lodash/isArray')
 
 const {
   RPC,
@@ -24,6 +25,33 @@ const getBlockNumber = async () => {
 
 const getNonce = async (account) => {
   return web3.eth.getTransactionCount(account)
+}
+
+const getTxReciept = async (txHash) => {
+  return web3.eth.getTransactionReceipt(txHash)
+}
+
+const logsToEvents = (logs, contract) => {
+  if (isArray(logs)) {
+    const events = {}
+    logs.forEach((log, index) => {
+      log = contract.events.allEventsLogDecoder.decode(contract.abiModel, log)
+      if (log.event) {
+        if (events[log.event]) {
+          if (isArray(events[log.event])) {
+            events[log.event].push(log)
+            return
+          }
+          events[log.event] = [events[log.event], log]
+          return
+        }
+        events[log.event] = log
+        return
+      }
+      events[index] = log
+    })
+    return events
+  }
 }
 
 const contracts = {
@@ -59,9 +87,11 @@ const contracts = {
 module.exports = {
   getBlockNumber,
   getNonce,
+  getTxReciept,
   contracts,
   toWei,
   fromWei,
   toBN,
-  DECIMALS
+  DECIMALS,
+  logsToEvents
 }
