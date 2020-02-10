@@ -81,6 +81,15 @@ contract DAIPointsToken is ERC677, ERC20Detailed, ERC20Mintable, ERC20Burnable, 
   * @param _amount amount (in wei) of DAI to be transferred from msg.sender balance to this contract's balance
   */
   function getDAIPoints(uint256 _amount) public bridgeExists returns(bool) {
+    getDAIPointsToAddress(_amount, msg.sender);
+  }
+
+  /**
+  * @dev Get DAIPoints (minted) in exchange for DAI and send to specific address, according to the conversion rate
+  * @param _amount amount (in wei) of DAI to be transferred from msg.sender balance to this contract's balance
+  * @param _recipient address address to receive the _amount
+  */
+  function getDAIPointsToAddress(uint256 _amount, address _recipient) public bridgeExists returns(bool) {
     // Transfer DAI into this contract
     require(dai.transferFrom(msg.sender, address(this), _amount), "DAI/transferFrom");
 
@@ -88,8 +97,8 @@ contract DAIPointsToken is ERC677, ERC20Detailed, ERC20Mintable, ERC20Burnable, 
     uint256 daipAmount = _amount.mul(daiToDaipConversionRate);
     _mint(address(this), daipAmount);
 
-    // Transfer DAIPoints (on other side) to msg.sender using the bridge
-    require(ERC677(address(this)).transferAndCall(bridge, daipAmount, abi.encodePacked(msg.sender)), "DAIPoints/transferAndCall");
+    // Transfer DAIPoints (on other side) to _recipient using the bridge
+    require(ERC677(address(this)).transferAndCall(bridge, daipAmount, abi.encodePacked(_recipient)), "DAIPoints/transferAndCall");
 
     // Deposit into Compound
     require(dai.approve(address(compound), _amount), "DAI/approve");
