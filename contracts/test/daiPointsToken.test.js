@@ -163,6 +163,34 @@ contract('DAIPointsToken', (accounts) => {
       daiAmount.should.be.bignumber.equal(await compound.balanceOfUnderlying(daip.address))
     })
 
+    it('getDAIPointsToAddress', async () => {
+      let rate = await daip.daiToDaipConversionRate()
+      let daiAmount = toBN(toWei('1', 'ether'))
+      let daipAmount = daiAmount.mul(rate)
+
+      // alice gets DAI
+      await dai.mint(alice, daiAmount)
+      daiAmount.should.be.bignumber.equal(await dai.balanceOf(alice))
+
+      // alice tries to get DAIPoints (should fail because not approved before)
+      await daip.getDAIPointsToAddress(daiAmount, bob, {from: alice}).should.be.rejectedWith(ERROR_MSG)
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(daip.address))
+
+      // alice approves DAI to DAIPoints address
+      await dai.approve(daip.address, daiAmount, {from: alice})
+
+      // flow
+      await daip.getDAIPointsToAddress(daiAmount, bob, {from: alice}).should.be.fulfilled
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(alice))
+      toBN(0).should.be.bignumber.equal(await dai.balanceOf(daip.address))
+      daipAmount.should.be.bignumber.equal(await daip.totalSupply())
+      daipAmount.should.be.bignumber.equal(await daip.balanceOf(bridge.address))
+      daip.address.should.be.equal(await bridge.from())
+      daipAmount.should.be.bignumber.equal(await bridge.value())
+      toChecksumAddress(bob).should.be.equal(toChecksumAddress(await bridge.data()))
+      daiAmount.should.be.bignumber.equal(await compound.balanceOfUnderlying(daip.address))
+    })
+
     it('transfer', async () => {
       let rate = await daip.daiToDaipConversionRate()
       let daiAmount = toBN(toWei('1', 'ether'))
