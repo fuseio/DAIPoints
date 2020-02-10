@@ -8,7 +8,8 @@ const mongoose = require('mongoose')
 
 const {
   MONGO_URI,
-  API_PORT
+  API_PORT,
+  SKIP_TASKS
 } = process.env
 
 async function init () {
@@ -22,7 +23,11 @@ async function init () {
       process.exit(1)
     })
     require('./models')(mongoose)
-    require('./services/agenda').start()
+    if (SKIP_TASKS) {
+      logger.warn('Running without agenda tasks!')
+    } else {
+      require('./services/agenda').start()
+    }
   }
   app.use(require('./routes'))
   app.use((req, res, next) => {
@@ -38,7 +43,7 @@ async function init () {
   })
 
   const server = app.listen(API_PORT || 8080, () => {
-    logger.info('Listening on port ' + server.address().port)
+    logger.info(`Listening on port ${server.address().port}`)
   })
 }
 
