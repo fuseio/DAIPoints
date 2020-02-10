@@ -1,0 +1,14 @@
+[
+  {
+    "name": "daipoints_oracle",
+    "script": "src/app.js",
+    "log_date_format": "YYYY-MM-DD HH:mm Z",
+    "merge_logs": false,
+    "watch": false,
+    "max_restarts": 100,
+    "restart_delay": 5000,
+    "autorestart": true,
+    "exec_interpreter": "node",
+    "exec_mode": "fork_mode"
+  }
+]
