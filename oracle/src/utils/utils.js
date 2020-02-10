@@ -119,7 +119,7 @@ const getDrawInfo = async () => {
       possibleWinnersCount: await getCommunityMembers(true)
     },
     previous: {
-      reward: fromWei(toBN(lastReward)),
+      reward: lastReward ? fromWei(toBN(lastReward)) : 0,
       winner: lastWinner
     }
   }
