@@ -56,8 +56,8 @@ const getLastWinning = async () => {
   }
 }
 
-const getEstimatedRewardAndGrowthRate = async () => {
-  logger.info('getEstimatedReward')
+const getCurrentRewardInfo = async () => {
+  logger.info('getCurrentRewardInfo')
   // https://github.com/pooltogether/pooltogetherjs/blob/master/src/utils/calculatePrizeEstimate.js
   const { endTime } = await Draw.findOne({ state: 'OPEN' })
   const secondsToDrawEnd = moment(endTime).diff(moment(), 'seconds')
@@ -90,28 +90,24 @@ const getEstimatedRewardAndGrowthRate = async () => {
   const rewardGrowthRatePerSec = daipEstimatedReward.sub(daipCurrentReward).div(toBN(secondsToDrawEnd))
 
   return {
+    endTime,
+    daipCurrentReward,
     estimatedReward: daipEstimatedReward,
     rewardGrowthRatePerSec
   }
-}
-
-const getNextDrawEndTime = async () => {
-  logger.info('getNextDrawEndTime')
-  const { endTime } = await Draw.findOne({ state: 'OPEN' })
-  return endTime
 }
 
 const getDrawInfo = async () => {
   logger.info('getDrawInfo')
 
   const { lastWinner, lastReward } = await getLastWinning()
-  const { estimatedReward, rewardGrowthRatePerSec } = await getEstimatedRewardAndGrowthRate()
+  const { daipCurrentReward, endTime, estimatedReward, rewardGrowthRatePerSec } = await getCurrentRewardInfo()
 
   return {
     current: {
-      endTimestamp: moment(await getNextDrawEndTime()).format('x'),
+      endTimestamp: moment(endTime).format('x'),
       reward: {
-        amount: fromWei(await getReward()),
+        amount: fromWei(daipCurrentReward),
         growthRatePerSec: fromWei(rewardGrowthRatePerSec),
         estimated: fromWei(estimatedReward)
       },
