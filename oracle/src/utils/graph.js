@@ -14,8 +14,11 @@ const getCommunityMembers = async (getCount) => {
   const query = `{communities(where:{address:"${DAI_POINTS_COMMUNITY_ADDRESS}"}) {entitiesList {communityEntities(where:{isUser: true, isAdmin: false}) {id, address}}}}`
   logger.debug(`query: ${query.replace('\n', '')}`)
   const data = await graphClient.request(query)
-  const communityMembers = data.communities[0].entitiesList.communityEntities
-  logger.debug(`found ${communityMembers.length} users`)
+  let communityMembers = []
+  if (data && data.communities && data.communities.length) {
+    communityMembers = data.communities[0].entitiesList.communityEntities
+    logger.debug(`found ${communityMembers.length} users`)
+  }
   return (getCount ? communityMembers.length : communityMembers)
 }
 
