@@ -72,10 +72,11 @@ const getCurrentRewardInfo = async () => {
   const interestRate = blocksToDrawEnd.mul(supplyRatePerBlock)
   logger.debug(`interestRate: ${interestRate}`)
 
-  const { compoundBalance } = await contracts.Compound.getAccountSnapshot()
-  logger.debug(`compoundBalance: ${compoundBalance}`)
+  const { compoundBalance, exchangeRateMantissa } = await contracts.Compound.getAccountSnapshot()
+  const compoundValue = compoundBalance.mul(exchangeRateMantissa).div(DECIMALS)
+  logger.debug(`compoundValue: ${fromWei(toBN(compoundValue))}`)
 
-  const estimatedInterestAccrued = interestRate.mul(compoundBalance).div(DECIMALS)
+  const estimatedInterestAccrued = interestRate.mul(compoundValue).div(DECIMALS)
   logger.debug(`estimatedInterestAccrued: ${estimatedInterestAccrued}`)
 
   const rate = await contracts.DAIp.rate()
