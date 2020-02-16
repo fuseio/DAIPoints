@@ -42,9 +42,9 @@ const selectWinner = async () => {
   logger.info('selectWinner')
   const communityMembers = await getCommunityMembers()
   const winner = communityMembers[(Math.floor(Math.random() * communityMembers.length - 1) + 1)]
-  logger.info(`winner is: ${winner.address}`)
+  logger.info(`winner is: ${winner}`)
 
-  return winner.address
+  return winner
 }
 
 const getLastWinning = async () => {
