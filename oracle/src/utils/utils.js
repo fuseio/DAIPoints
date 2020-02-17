@@ -38,11 +38,14 @@ const getReward = async () => {
   return daipRewardAmount
 }
 
-const selectWinner = async () => {
+const selectWinner = async (drawId) => {
   logger.info('selectWinner')
-  const communityMembers = await getCommunityMembers()
-  logger.trace({ communityMembers })
-  const winner = communityMembers[(Math.floor(Math.random() * communityMembers.length - 1) + 1)]
+  const snapshot = await Snapshot.getRandom(drawId)
+  if (!snapshot || !snapshot.data || !snapshot.data.length) {
+    return
+  }
+  // TODO select winner from snapshots using the algorithm
+  const winner = snapshot.data[(Math.floor(Math.random() * snapshot.data.length - 1) + 1)].address
   logger.info(`winner is: ${winner}`)
 
   return winner
