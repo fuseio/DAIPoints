@@ -39,13 +39,41 @@ const getReward = async () => {
 }
 
 const selectWinner = async (drawId) => {
+  const getWeightedRandom = (data) => {
+    // First, we loop the main dataset to count up the total weight.
+    // We're starting the counter at one because the upper boundary of Math.random() is exclusive.
+    let total = 1
+    for (let i = 0; i < data.length; ++i) {
+      total += data[i].balance
+    }
+    logger.debug({ total })
+
+    // Total in hand, we can now pick a random value akin to our
+    // random index from before.
+    const threshold = Math.floor(Math.random() * total)
+    logger.debug({ threshold })
+
+    // Now we just need to loop through the main data one more time until we discover which value would live within this particular threshold.
+    // We need to keep a running count of weights as we go.
+    let running = 0
+    for (let i = 0; i < data.length; ++i) {
+      // Add the weight to our running.
+      running += data[i].balance
+
+      // If this value falls within the threshold, we're done!
+      if (running >= threshold) {
+        return data[i].address
+      }
+    }
+  }
+
   logger.info('selectWinner')
   const snapshot = await Snapshot.getRandom(drawId)
   if (!snapshot || !snapshot.data || !snapshot.data.length) {
     return
   }
-  // TODO select winner from snapshots using the algorithm
-  const winner = snapshot.data[(Math.floor(Math.random() * snapshot.data.length - 1) + 1)].address
+
+  const winner = getWeightedRandom(snapshot.data)
   logger.info(`winner is: ${winner}`)
 
   return winner

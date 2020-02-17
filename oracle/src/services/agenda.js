@@ -21,7 +21,7 @@ const drawTask = async () => {
     const now = moment()
     if (now.isSameOrAfter(draw.endTime)) {
       logger.info('need to close draw and open a new one')
-      const winner = await selectWinner()
+      const winner = await selectWinner(draw.id)
       const { rewardAmount } = await reward(winner)
       await Draw.close(draw.id, winner, rewardAmount)
       await Draw.create()
