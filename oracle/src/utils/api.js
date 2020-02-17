@@ -10,20 +10,18 @@ const {
 const authorization = { headers: { Authorization: API_JWT_TOKEN } }
 
 const getWalletsByPhoneNumber = async (phoneNumber) => {
-  logger.debug(`getWalletByPhoneNumber: ${phoneNumber}`)
+  logger.trace(`getWalletByPhoneNumber: ${phoneNumber}`)
   const { data } = await axios.get(`${API_URL}/wallets/all/${phoneNumber}`, authorization)
-  // logger.debug(`data: ${JSON.stringify(data)}`)
   return data.data && data.data.map(d => d.walletAddress)
 }
 
-const getWalletByAddress = async (address) => {
-  logger.debug(`getWalletByAddress: ${address}`)
-  const { data } = await axios.get(`${API_URL}/wallets/address/${address}`, authorization)
-  // logger.debug(`data: ${JSON.stringify(data)}`)
-  return data && data.data
+const isExistWalletByAddress = async (address) => {
+  logger.trace(`isExistWalletByAddress: ${address}`)
+  const { data } = await axios.get(`${API_URL}/wallets/exists/${address}`, authorization)
+  return { address, exists: data && data.data }
 }
 
 module.exports = {
   getWalletsByPhoneNumber,
-  getWalletByAddress
+  isExistWalletByAddress
 }

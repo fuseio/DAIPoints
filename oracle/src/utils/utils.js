@@ -1,11 +1,11 @@
-const mongoose = require('mongoose')
 const moment = require('moment')
+const mongoose = require('mongoose')
 const logger = require('../services/logger')
 const { getBlockNumber, contracts, fromWei, toBN, DECIMALS } = require('./web3')
 const { getCommunityMembers } = require('./graph')
-const { reward } = require('./tx')
 
 const Draw = mongoose.model('Draw')
+const Snapshot = mongoose.model('Snapshot')
 
 const getReward = async () => {
   logger.info('getReward')
@@ -41,6 +41,7 @@ const getReward = async () => {
 const selectWinner = async () => {
   logger.info('selectWinner')
   const communityMembers = await getCommunityMembers()
+  logger.trace({ communityMembers })
   const winner = communityMembers[(Math.floor(Math.random() * communityMembers.length - 1) + 1)]
   logger.info(`winner is: ${winner}`)
 
@@ -122,25 +123,14 @@ const getDrawInfo = async () => {
   }
 }
 
-const drawTask = async () => {
-  const draw = await Draw.findOne({ state: 'OPEN' })
-  if (draw) {
-    logger.info(`there's an open draw: ${draw}, ending at: ${draw.endTime}`)
-    const now = moment()
-    if (now.isSameOrAfter(draw.endTime)) {
-      logger.info('need to close draw and open a new one')
-      const winner = await selectWinner()
-      const { rewardAmount } = await reward(winner)
-      await Draw.close(draw.id, winner, rewardAmount)
-      await Draw.create()
-    }
-  } else {
-    logger.info('there\'s no open draw - creating one...')
-    await Draw.create()
-  }
-}
-
 module.exports = {
+  getReward,
+  selectWinner,
+  getLastWinning,
+  getCurrentRewardInfo,
   getDrawInfo,
-  drawTask
+  models: {
+    Draw,
+    Snapshot
+  }
 }

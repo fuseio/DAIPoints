@@ -4,7 +4,7 @@ const isArray = require('lodash/isArray')
 
 const {
   RPC,
-  DAI_POINTS_ADDRESS,
+  FOREIGN_DAI_POINTS_ADDRESS,
   COMPOUND_ADDRESS
 } = process.env
 
@@ -15,7 +15,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider(RPC))
 const { toWei, fromWei, toBN } = web3.utils
 
 const Compound = new web3.eth.Contract(COMPOUND_ABI, COMPOUND_ADDRESS)
-const DAIp = new web3.eth.Contract(DAI_POINTS_ABI, DAI_POINTS_ADDRESS)
+const DAIp = new web3.eth.Contract(DAI_POINTS_ABI, FOREIGN_DAI_POINTS_ADDRESS)
 
 const DECIMALS = toBN(1e18)
 
@@ -69,7 +69,7 @@ const contracts = {
   },
   Compound: {
     getAccountSnapshot: async () => {
-      const result = await Compound.methods.getAccountSnapshot(DAI_POINTS_ADDRESS).call()
+      const result = await Compound.methods.getAccountSnapshot(FOREIGN_DAI_POINTS_ADDRESS).call()
       const compoundBalance = toBN(result[1])
       const exchangeRateMantissa = toBN(result[3])
       return {
