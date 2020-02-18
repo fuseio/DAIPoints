@@ -1,11 +1,11 @@
-const mongoose = require('mongoose')
 const moment = require('moment')
+const mongoose = require('mongoose')
 const logger = require('../services/logger')
 const { getBlockNumber, contracts, fromWei, toBN, DECIMALS } = require('./web3')
 const { getCommunityMembers } = require('./graph')
-const { reward } = require('./tx')
 
 const Draw = mongoose.model('Draw')
+const Snapshot = mongoose.model('Snapshot')
 
 const getReward = async () => {
   logger.info('getReward')
@@ -38,13 +38,45 @@ const getReward = async () => {
   return daipRewardAmount
 }
 
-const selectWinner = async () => {
-  logger.info('selectWinner')
-  const communityMembers = await getCommunityMembers()
-  const winner = communityMembers[(Math.floor(Math.random() * communityMembers.length - 1) + 1)]
-  logger.info(`winner is: ${winner.address}`)
+const selectWinner = async (drawId) => {
+  const getWeightedRandom = (data) => {
+    // First, we loop the main dataset to count up the total weight.
+    // We're starting the counter at one because the upper boundary of Math.random() is exclusive.
+    let total = 1
+    for (let i = 0; i < data.length; ++i) {
+      total += data[i].balance
+    }
+    logger.debug({ total })
 
-  return winner.address
+    // Total in hand, we can now pick a random value akin to our
+    // random index from before.
+    const threshold = Math.floor(Math.random() * total)
+    logger.debug({ threshold })
+
+    // Now we just need to loop through the main data one more time until we discover which value would live within this particular threshold.
+    // We need to keep a running count of weights as we go.
+    let running = 0
+    for (let i = 0; i < data.length; ++i) {
+      // Add the weight to our running.
+      running += data[i].balance
+
+      // If this value falls within the threshold, we're done!
+      if (running >= threshold) {
+        return data[i].address
+      }
+    }
+  }
+
+  logger.info('selectWinner')
+  const snapshot = await Snapshot.getRandom(drawId)
+  if (!snapshot || !snapshot.data || !snapshot.data.length) {
+    return
+  }
+
+  const winner = getWeightedRandom(snapshot.data)
+  logger.info(`winner is: ${winner}`)
+
+  return winner
 }
 
 const getLastWinning = async () => {
@@ -122,25 +154,14 @@ const getDrawInfo = async () => {
   }
 }
 
-const drawTask = async () => {
-  const draw = await Draw.findOne({ state: 'OPEN' })
-  if (draw) {
-    logger.info(`there's an open draw: ${draw}, ending at: ${draw.endTime}`)
-    const now = moment()
-    if (now.isSameOrAfter(draw.endTime)) {
-      logger.info('need to close draw and open a new one')
-      const winner = await selectWinner()
-      const { rewardAmount } = await reward(winner)
-      await Draw.close(draw.id, winner, rewardAmount)
-      await Draw.create()
-    }
-  } else {
-    logger.info('there\'s no open draw - creating one...')
-    await Draw.create()
-  }
-}
-
 module.exports = {
+  getReward,
+  selectWinner,
+  getLastWinning,
+  getCurrentRewardInfo,
   getDrawInfo,
-  drawTask
+  models: {
+    Draw,
+    Snapshot
+  }
 }

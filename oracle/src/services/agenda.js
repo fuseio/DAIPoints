@@ -1,7 +1,11 @@
 require('dotenv').config()
 const Agenda = require('agenda')
+const moment = require('moment')
 const logger = require('./logger')
-const { drawTask } = require('../utils/utils')
+const { selectWinner, models } = require('../utils/utils')
+const { Draw, Snapshot } = models
+const { reward } = require('../utils/tx')
+const { getCommunityMembersWithBalances } = require('../utils/graph')
 
 const {
   MONGO_URI,
@@ -9,6 +13,36 @@ const {
 } = process.env
 
 const agenda = new Agenda({ db: { address: MONGO_URI, options: { useUnifiedTopology: true, autoReconnect: false, reconnectTries: 0, reconnectInterval: 0 } } })
+
+const drawTask = async () => {
+  const draw = await Draw.findOne({ state: 'OPEN' })
+  if (draw) {
+    logger.info(`there's an open draw: ${draw}, ending at: ${draw.endTime}`)
+    const now = moment()
+    if (now.isSameOrAfter(draw.endTime)) {
+      logger.info('need to close draw and open a new one')
+      const winner = await selectWinner(draw.id)
+      const { rewardAmount } = await reward(winner)
+      await Draw.close(draw.id, winner, rewardAmount)
+      await Draw.create()
+    }
+  } else {
+    logger.info('there\'s no open draw - creating one...')
+    await Draw.create()
+  }
+}
+
+const snapshotTask = async () => {
+  const communityMembersWithBalances = await getCommunityMembersWithBalances()
+  logger.trace({ communityMembersWithBalances })
+  const draw = await Draw.findOne({ state: 'OPEN' })
+  if (draw) {
+    logger.info(`there's an open draw: ${draw}, ending at: ${draw.endTime}`)
+    await Snapshot.create(draw.id, communityMembersWithBalances)
+  } else {
+    logger.warn('there\'s no open draw - creating one...')
+  }
+}
 
 async function start () {
   logger.info('Starting Agenda job scheduling')
@@ -25,12 +59,19 @@ async function start () {
     await drawTask()
   })
 
+  agenda.define('snapshot', async (job) => {
+    logger.info('snapshot')
+    await snapshotTask()
+  })
+
   await agenda.every(`${PERIODIC_INTERVAL_SECONDS} seconds`, 'draw-state')
+  await agenda.every('0 0 * * *', 'snapshot')
 
   logger.info('Agenda job scheduling is successfully defined')
 }
 
 module.exports = {
   start,
-  agenda
+  agenda,
+  snapshotTask
 }
