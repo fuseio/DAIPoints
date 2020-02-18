@@ -30,6 +30,7 @@
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
     "mongoose": "^5.8.11",
+    "node-cache": "^5.1.0",
     "pino": "^5.16.0",
     "pino-pretty": "^3.5.0",
     "truffle-hdwallet-provider": "^1.0.17",

@@ -2,6 +2,7 @@ require('dotenv').config()
 const Promise = require('bluebird')
 const { GraphQLClient } = require('graphql-request')
 const logger = require('../services/logger')
+const cache = require('../services/cache')
 const { getWalletsByPhoneNumber, isExistWalletByAddress } = require('./api')
 const { toBN, DECIMALS } = require('./web3')
 
@@ -44,7 +45,12 @@ const getCommunityMembers = async (getCount) => {
   }
 
   logger.info('getCommunityMembers')
-  let communityMembers = []
+  let communityMembers = cache.get('communityMembers')
+  if (communityMembers) {
+    logger.debug(`found ${communityMembers.length} users from cache`)
+    return (getCount ? communityMembers.length : communityMembers)
+  }
+  communityMembers = []
   const excludedWallets = await getExcludedWallets()
   logger.trace({ excludedWallets })
   const limit = 1000
@@ -58,6 +64,7 @@ const getCommunityMembers = async (getCount) => {
   logger.debug(`found ${communityMembers.length} users`)
   communityMembers = await filterDeletedWallets(communityMembers)
   logger.debug(`found ${communityMembers.length} users after filtering deleted wallets`)
+  cache.set('communityMembers', communityMembers)
   return (getCount ? communityMembers.length : communityMembers)
 }
 
