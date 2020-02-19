@@ -64,7 +64,6 @@ const getCommunityMembers = async (getCount) => {
   logger.debug(`found ${communityMembers.length} users`)
   communityMembers = await filterDeletedWallets(communityMembers)
   logger.debug(`found ${communityMembers.length} users after filtering deleted wallets`)
-  cache.set('communityMembers', communityMembers)
   return (getCount ? communityMembers.length : communityMembers)
 }
 

@@ -2,10 +2,11 @@ require('dotenv').config()
 const Agenda = require('agenda')
 const moment = require('moment')
 const logger = require('./logger')
+const cache = require('./cache')
 const { selectWinner, models } = require('../utils/utils')
 const { Draw, Snapshot } = models
 const { reward } = require('../utils/tx')
-const { getCommunityMembersWithBalances } = require('../utils/graph')
+const { getCommunityMembersWithBalances, getCommunityMembers } = require('../utils/graph')
 
 const {
   MONGO_URI,
@@ -44,6 +45,11 @@ const snapshotTask = async () => {
   }
 }
 
+const communityMembersTask = async () => {
+  const communityMembers = await getCommunityMembers()
+  cache.set('communityMembers', communityMembers)
+}
+
 async function start () {
   logger.info('Starting Agenda job scheduling')
 
@@ -64,8 +70,14 @@ async function start () {
     await snapshotTask()
   })
 
+  agenda.define('community-members', async (job) => {
+    logger.info('community-members')
+    await communityMembersTask()
+  })
+
   await agenda.every(`${PERIODIC_INTERVAL_SECONDS} seconds`, 'draw-state')
   await agenda.every('0 0 * * *', 'snapshot')
+  await agenda.every('1 hour', 'community-members')
 
   logger.info('Agenda job scheduling is successfully defined')
 }
