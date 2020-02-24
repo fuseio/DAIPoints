@@ -10,7 +10,8 @@ const {
   GRAPH_URL,
   DAI_POINTS_COMMUNITY_ADDRESS,
   HOME_DAI_POINTS_ADDRESS,
-  EXCLUDED_PHONE_NUMBERS
+  EXCLUDED_PHONE_NUMBERS,
+  API_REQUESTS_CONCURRENCY
 } = process.env
 
 const graphClient = new GraphQLClient(GRAPH_URL)
@@ -34,7 +35,7 @@ const getCommunityMembers = async (getCount) => {
             resolve(result)
           })
       })
-    }, { concurrency: 100 }).filter(obj => obj.exists).map(obj => obj.address)
+    }, { concurrency: API_REQUESTS_CONCURRENCY }).filter(obj => obj.exists).map(obj => obj.address)
     return results.length ? results : []
   }
 
@@ -88,7 +89,7 @@ const getCommunityMembersWithBalances = async () => {
           resolve(result)
         })
     })
-  }, { concurrency: 100 }).filter(obj => obj.balance)
+  }, { concurrency: API_REQUESTS_CONCURRENCY }).filter(obj => obj.balance)
   return results
 }
 
