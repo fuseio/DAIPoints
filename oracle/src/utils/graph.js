@@ -35,7 +35,7 @@ const getCommunityMembers = async (getCount) => {
             resolve(result)
           })
       })
-    }, { concurrency: API_REQUESTS_CONCURRENCY }).filter(obj => obj.exists).map(obj => obj.address)
+    }, { concurrency: parseInt(API_REQUESTS_CONCURRENCY) }).filter(obj => obj.exists).map(obj => obj.address)
     return results.length ? results : []
   }
 
@@ -89,7 +89,7 @@ const getCommunityMembersWithBalances = async () => {
           resolve(result)
         })
     })
-  }, { concurrency: API_REQUESTS_CONCURRENCY }).filter(obj => obj.balance)
+  }, { concurrency: parseInt(API_REQUESTS_CONCURRENCY) }).filter(obj => obj.balance)
   return results
 }
 
