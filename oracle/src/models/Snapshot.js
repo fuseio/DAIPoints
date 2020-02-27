@@ -18,4 +18,8 @@ Snapshot.getRandom = async (draw) => {
   return snapshots.length ? snapshots[(Math.floor(Math.random() * snapshots.length - 1) + 1)] : []
 }
 
+Snapshot.getAll = async (draw) => {
+  return Snapshot.find({ draw: ObjectId(draw) })
+}
+
 module.exports = Snapshot
