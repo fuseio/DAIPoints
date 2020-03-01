@@ -140,7 +140,7 @@ const getPossibleWinners = async (getCount) => {
   let possibleWinners
   if (snapshots && snapshots.length) {
     logger.debug('possibleWinners from snapshots')
-    possibleWinners = [...new Set(_.flatten(snapshots.map(snapshot => snapshot.data)))]
+    possibleWinners = [...new Set(_.flatten(snapshots.map(snapshot => snapshot.data.map(d => d.address))))]
   } else {
     logger.debug('possibleWinners from getCommunityMembers')
     possibleWinners = await getCommunityMembers()
