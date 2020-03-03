@@ -3,7 +3,6 @@ const mongoose = require('mongoose')
 const _ = require('lodash')
 const logger = require('../services/logger')
 const { getBlockNumber, contracts, fromWei, toBN, DECIMALS } = require('./web3')
-const { getCommunityMembers } = require('./graph')
 
 const Draw = mongoose.model('Draw')
 const Snapshot = mongoose.model('Snapshot')
@@ -135,16 +134,16 @@ const getPossibleWinners = async (getCount) => {
   logger.info('getCurrentRewardInfo')
   const { id } = await Draw.findOne({ state: 'OPEN' })
   logger.debug(`open draw: ${id}`)
-  const snapshots = await Snapshot.getAll(id)
+  let snapshots = await Snapshot.getAll(id)
   logger.debug(`found ${snapshots.length} snapshots`)
-  let possibleWinners
   if (snapshots && snapshots.length) {
     logger.debug('possibleWinners from snapshots')
-    possibleWinners = [...new Set(_.flatten(snapshots.map(snapshot => snapshot.data.map(d => d.address))))]
   } else {
-    logger.debug('possibleWinners from getCommunityMembers')
-    possibleWinners = await getCommunityMembers()
+    logger.debug('possibleWinners from snapshots of last draw')
+    const { id } = await Draw.findOne({ state: 'CLOSED' }).sort({ createdAt: -1 })
+    snapshots = await Snapshot.getAll(id)
   }
+  const possibleWinners = [...new Set(_.flatten(snapshots.map(snapshot => snapshot.data.map(d => d.address))))]
   return getCount ? possibleWinners.length : possibleWinners
 }
 
